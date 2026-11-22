@@ -18,6 +18,7 @@ const {chromium}=require('/tmp/tap-cdp/node_modules/playwright-core');
       const api=window.tapwisper;
       if((await api.localAi.installed()).includes('oruk-fourier-2b'))throw Error('Model was already installed');
       await api.store.set('onboardingCompleted',true);
+      await api.store.set('speechLanguages',['en']);
       await api.store.set('shortcuts',{record:'Ctrl+Space'});
       const prefs=await api.store.get('localAi');
       await api.store.set('localAi',{...prefs,useGpu:false,threads:4});
@@ -32,12 +33,24 @@ const {chromium}=require('/tmp/tap-cdp/node_modules/playwright-core');
     const row=name.locator('xpath=../../..');
     console.log('Packaged UI before selection:',await row.innerText());
     await row.getByRole('button',{name:'Download',exact:true}).click();
-    const confirm=page.getByRole('dialog').getByRole('button',{name:'Download',exact:true});
-    if(await confirm.isVisible().catch(()=>false)) await confirm.click();
-    await page.waitForFunction(async()=> (await window.tapwisper.localAi.installed()).includes('oruk-fourier-2b'),null,{timeout:540_000});
+    // Wait on actual UI state across native promises, while allowing either autoactivation or an explicit Use.
+    const confirm=page.locator('[role="dialog"],[role="alertdialog"]').getByRole('button',{name:'Download',exact:true});
+    const inUse=row.getByText('In use',{exact:true});
     const use=row.getByRole('button',{name:'Use',exact:true});
-    if(await use.isVisible()) await use.click();
-    await page.waitForFunction(async()=> (await window.tapwisper.store.get('localModels')).stt==='oruk-fourier-2b');
+    const started=Date.now();
+    while(Date.now()-started<540000) {
+      if(await confirm.isVisible()) await confirm.click();
+      if(await use.isVisible()) await use.click();
+      if(await inUse.isVisible()) break;
+      await new Promise(r=>setTimeout(r,600));
+    }
+    if(!await inUse.isVisible()) throw Error('Fourier never reached In use in the packaged picker: '+await row.innerText());
+    const selection=await page.evaluate(async()=>({
+      installed:await window.tapwisper.localAi.installed(),
+      active:(await window.tapwisper.store.get('localModels')).stt
+    }));
+    if(!selection.installed.includes('oruk-fourier-2b')||selection.active!=='oruk-fourier-2b') throw Error('Stored selection: '+JSON.stringify(selection));
+    console.log('Persisted active model',selection.active,'and installed inventory',selection.installed);
     console.log('Packaged UI after selection:',await row.innerText());
     await page.screenshot({path:'/tmp/tap-picker.png'});
   }catch(e){
