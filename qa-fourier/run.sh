@@ -6,9 +6,16 @@ pactl load-module module-null-sink sink_name=tapfixture rate=48000 channels=1
 pactl set-default-source tapfixture.monitor
 mkdir -p /tmp/tap-qa-profile
 ffmpeg -hide_banner -loglevel error -y -i /tmp/tap-fixture.wav -af "adelay=700,apad=pad_dur=9" -ar 44100 -ac 2 /tmp/tap-chromium-mic.wav
-openbox >/tmp/tap-wm.log 2>&1 &
+export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp/tap-wayland-runtime}
+mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
+weston --backend=headless-backend.so --socket=tap-wayland --xwayland --width=1280 --height=900 --idle-time=0 --log=/tmp/tap-weston.log &
+for i in {1..100}; do grep -q 'listening on display' /tmp/tap-weston.log 2>/dev/null && break; sleep 0.15; done
+cat /tmp/tap-weston.log
+display_num=$(sed -nE 's/.*listening on display (:[0-9]+).*/\1/p' /tmp/tap-weston.log | tail -1)
+[ -n "$display_num" ]
+export DISPLAY="$display_num" WAYLAND_DISPLAY=tap-wayland XDG_SESSION_TYPE=wayland GDK_BACKEND=x11
 launch() {
-  node_modules/.bin/electron --no-sandbox --disable-gpu --remote-debugging-port=9222 --use-fake-device-for-media-stream --use-file-for-fake-audio-capture=/tmp/tap-chromium-mic.wav --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --user-data-dir=/tmp/tap-qa-profile . > /tmp/tap-app.log 2>&1 &
+  node_modules/.bin/electron --ozone-platform=x11 --no-sandbox --disable-gpu --remote-debugging-port=9222 --use-fake-device-for-media-stream --use-file-for-fake-audio-capture=/tmp/tap-chromium-mic.wav --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --user-data-dir=/tmp/tap-qa-profile . > /tmp/tap-app.log 2>&1 &
   app=$!
   for i in {1..90}; do curl -fsS http://127.0.0.1:9222/json/version >/dev/null 2>&1 && break; sleep 1; done
 }
@@ -23,7 +30,7 @@ launch
 win=$(timeout 25 xdotool search --sync --name '^Fourier GTK target$' | head -1)
 node qa-fourier/events.cjs > /tmp/tap-events.log 2>&1 &
 sleep 6
-xdotool windowactivate --sync "$win"
+xdotool windowactivate "$win" || true
 xdotool windowfocus --sync "$win"
 xdotool type --clearmodifiers ready
 sleep 0.3
@@ -37,7 +44,7 @@ paplay --device=tapfixture /tmp/tap-fixture.wav
 sleep 1
 xdotool keyup space keyup Control_L
 sleep 1
-xdotool windowactivate --sync "$win"
+xdotool windowactivate "$win" || true
 xdotool windowfocus --sync "$win"
 for i in {1..360}; do
    [ -s /tmp/tap-inserted.txt ] && break
