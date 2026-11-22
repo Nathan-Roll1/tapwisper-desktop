@@ -5,12 +5,13 @@ pulseaudio --start --exit-idle-time=-1
 pactl load-module module-null-sink sink_name=tapfixture rate=48000 channels=1
 pactl set-default-source tapfixture.monitor
 mkdir -p /tmp/tap-qa-profile
+openbox >/tmp/tap-wm.log 2>&1 &
 launch() {
-  node_modules/.bin/electron --no-sandbox --disable-gpu --remote-debugging-port=9222 --autoplay-policy=no-user-gesture-required --user-data-dir=/tmp/tap-qa-profile . > /tmp/tap-app.log 2>&1 &
+  node_modules/.bin/electron --no-sandbox --disable-gpu --remote-debugging-port=9222 --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --user-data-dir=/tmp/tap-qa-profile . > /tmp/tap-app.log 2>&1 &
   app=$!
   for i in {1..90}; do curl -fsS http://127.0.0.1:9222/json/version >/dev/null 2>&1 && break; sleep 1; done
 }
-trap 'tail -65 /tmp/tap-app.log || true' EXIT
+trap 'tail -65 /tmp/tap-app.log /tmp/tap-events.log || true' EXIT
 launch
 node qa-fourier/setup.cjs
 kill "$app" || true
@@ -19,14 +20,16 @@ sleep 3
 launch
 /usr/bin/python3 qa-fourier/target.py >/tmp/tap-target.log 2>&1 &
 win=$(timeout 25 xdotool search --sync --name '^Fourier GTK target$' | head -1)
-sleep 5
+node qa-fourier/events.cjs > /tmp/tap-events.log 2>&1 &
+sleep 6
+xdotool windowactivate --sync "$win"
 xdotool windowfocus --sync "$win"
 xdotool keydown Control_R
 sleep 2
 paplay --device=tapfixture /tmp/tap-fixture.wav
 sleep 1
 xdotool keyup Control_R
-for i in {1..200}; do [ -s /tmp/tap-inserted.txt ] && break; sleep 1; done
+for i in {1..110}; do [ -s /tmp/tap-inserted.txt ] && break; sleep 1; done
 python3 - <<'PY'
 import re
 from pathlib import Path
