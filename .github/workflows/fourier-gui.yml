@@ -1,0 +1,30 @@
+name: Fourier Linux dictation
+on:
+  push:
+    branches: [qa/fourier-mic-paste]
+permissions:
+  contents: read
+jobs:
+  dictation:
+    if: github.repository == 'Nathan-Roll1/tapwisper-desktop'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare desktop session and packaged native dependencies
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb xdotool pulseaudio pulseaudio-utils libxtst-dev libx11-xcb-dev libxkbcommon-x11-dev python3-gi gir1.2-gtk-3.0 > /tmp/tap-apt.log
+          npm ci --no-audit --no-fund > /tmp/tap-npm.log 2>&1 || { tail -50 /tmp/tap-npm.log; exit 1; }
+          npm run build
+          npm install --prefix /tmp/tap-cdp --no-audit --no-fund playwright-core@1.55.0
+          mkdir -p resources/bin/llama
+          curl -fsSL --retry 3 https://github.com/ggml-org/llama.cpp/releases/download/b11928/llama-b11928-bin-ubuntu-x64.tar.gz -o /tmp/llama.tar.gz
+          tar xf /tmp/llama.tar.gz -C /tmp
+          runtime=$(find /tmp -name llama-server -type f | head -1)
+          cp -a "$(dirname "$runtime")"/. resources/bin/llama/
+          curl -fsSL https://raw.githubusercontent.com/ggml-org/whisper.cpp/b0a11594aec50892a02cd8d129eee2dfe93a8bb8/samples/jfk.wav -o /tmp/tap-fixture.wav
+      - name: Record and paste through the Electron process
+        run: dbus-run-session -- xvfb-run -a -s "-screen 0 1280x900x24" bash qa-fourier/run.sh
