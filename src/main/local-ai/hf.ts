@@ -92,8 +92,15 @@ export function pickFiles(source: ModelSource, info: RepoInfo): RemoteFile[] {
   }
   const result = [toRemote(source.repo, revision, 'model', model)]
   if (source.mmproj) {
-    const projector = findProjector(files)
-    if (!projector) throw new LocalAiError('model-unavailable', `${source.repo} has no mmproj file`)
+    const projector = source.projectorFile
+      ? files.find((f) => f.rfilename === source.projectorFile)
+      : findProjector(files)
+    if (!projector) {
+      throw new LocalAiError(
+        'model-unavailable',
+        `${source.repo} has no ${source.projectorFile ?? 'mmproj'} file`
+      )
+    }
     result.push(toRemote(source.repo, revision, 'mmproj', projector))
   }
   return result

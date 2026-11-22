@@ -263,6 +263,28 @@
       "heavy": true
     },
     {
+      "id": "oruk-fourier-2b",
+      "runtime": "llama",
+      "family": "qwen-asr",
+      "label": "Oruk Fourier 2B",
+      "source": {
+        "repo": "oruk/oruk-fourier-2b",
+        "file": "gguf/llama-cpp/Qwen3-ASR-Oruk-Fourier-2B-Q8_0.gguf",
+        "projectorFile": "gguf/llama-cpp/mmproj-Qwen3-ASR-Oruk-Fourier-2B-Q8_0.gguf",
+        "mmproj": true
+      },
+      "sizeBytes": 2190133984,
+      "minRamGB": 4,
+      "recommendedRamGB": 8,
+      "languages": ["en"],
+      "license": "CC-BY-NC-4.0",
+      "licenseUrl": "https://huggingface.co/oruk/oruk-fourier-2b#license",
+      "learnMoreUrl": "https://huggingface.co/oruk/oruk-fourier-2b",
+      "speed": 3,
+      "quality": 5,
+      "heavy": true
+    },
+    {
       "id": "voxtral-mini-3b",
       "runtime": "llama",
       "family": "voxtral",

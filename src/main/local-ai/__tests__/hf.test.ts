@@ -51,6 +51,23 @@ describe('pickFiles', () => {
     expect(files[1].url).toMatch(/mmproj-Model-f16\.gguf$/)
   })
 
+  it('resolves a catalog model and its named projector even when preferred decoys exist', () => {
+    const source = {
+      repo: 'org/Model-GGUF',
+      file: 'native/Model-Q8_0.gguf',
+      mmproj: true,
+      projectorFile: 'native/mmproj-Model-Q8_0.gguf'
+    }
+    const pair = [file(source.file), file(source.projectorFile)]
+    const files = pickFiles(source, { ...repo, siblings: [...repo.siblings, ...pair] })
+    expect(files.map((f) => f.url)).toEqual(
+      pair.map((f) => `https://huggingface.co/${source.repo}/resolve/${repo.sha}/${f.rfilename}`)
+    )
+    expect(() => pickFiles(source, { ...repo, siblings: [...repo.siblings, pair[0]] })).toThrow(
+      expect.objectContaining({ code: 'model-unavailable' })
+    )
+  })
+
   it('matches exact file names and ignores non-SHA-256 ids', () => {
     const info = { siblings: [{ rfilename: 'ggml-base.bin', size: 5, lfs: { oid: 'xyz' } }] }
     const [model] = pickFiles({ repo: 'ggerganov/whisper.cpp', file: 'ggml-base.bin' }, info)

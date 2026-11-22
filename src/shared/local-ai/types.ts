@@ -30,6 +30,8 @@ export interface ModelSource {
   quant?: string[]
   /** Also fetch the repository's multimodal projector (audio models) */
   mmproj?: boolean
+  /** Exact projector path when a repository contains more than one compatible filename */
+  projectorFile?: string
 }
 
 export interface LocalModelEntry {
