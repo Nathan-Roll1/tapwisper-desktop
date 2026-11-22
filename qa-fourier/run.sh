@@ -25,6 +25,12 @@ node qa-fourier/events.cjs > /tmp/tap-events.log 2>&1 &
 sleep 6
 xdotool windowactivate --sync "$win"
 xdotool windowfocus --sync "$win"
+xdotool type --clearmodifiers ready
+sleep 0.3
+grep -qx ready /tmp/tap-inserted.txt
+xdotool key --clearmodifiers ctrl+a BackSpace
+sleep 0.2
+[ ! -s /tmp/tap-inserted.txt ]
 xdotool keydown Control_L keydown space
 sleep 2
 paplay --device=tapfixture /tmp/tap-fixture.wav
@@ -33,7 +39,12 @@ xdotool keyup space keyup Control_L
 sleep 1
 xdotool windowactivate --sync "$win"
 xdotool windowfocus --sync "$win"
-for i in {1..105}; do [ -s /tmp/tap-inserted.txt ] && break; sleep 1; done
+for i in {1..360}; do
+   [ -s /tmp/tap-inserted.txt ] && break
+   focus=$(xdotool getwindowfocus 2>/dev/null || true)
+   if [ "$focus" != "$win" ]; then xdotool windowfocus "$win" || true; fi
+   sleep 0.25
+done
 python3 - <<'PY'
 import re
 from pathlib import Path
