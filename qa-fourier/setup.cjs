@@ -15,6 +15,7 @@ const { chromium } = require('/tmp/tap-cdp/node_modules/playwright-core');
         const id='oruk-fourier-2b';
         await api.store.set('onboardingCompleted',true);
         await api.store.set('speechEngine','local');
+        await api.store.set('shortcuts',{record:'Ctrl+Space'});
         await api.store.set('localModels',{stt:id,llm:null});
         const settings=await api.store.get('localAi');
         await api.store.set('localAi',{...settings,useGpu:false,threads:4});

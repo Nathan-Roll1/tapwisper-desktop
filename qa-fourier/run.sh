@@ -11,7 +11,7 @@ launch() {
   app=$!
   for i in {1..90}; do curl -fsS http://127.0.0.1:9222/json/version >/dev/null 2>&1 && break; sleep 1; done
 }
-trap 'tail -65 /tmp/tap-app.log /tmp/tap-events.log || true' EXIT
+trap 'tail -n 65 /tmp/tap-app.log /tmp/tap-events.log || true' EXIT
 launch
 node qa-fourier/setup.cjs
 kill "$app" || true
@@ -24,12 +24,12 @@ node qa-fourier/events.cjs > /tmp/tap-events.log 2>&1 &
 sleep 6
 xdotool windowactivate --sync "$win"
 xdotool windowfocus --sync "$win"
-xdotool keydown Control_R
+xdotool keydown Control_L keydown space
 sleep 2
 paplay --device=tapfixture /tmp/tap-fixture.wav
 sleep 1
-xdotool keyup Control_R
-for i in {1..110}; do [ -s /tmp/tap-inserted.txt ] && break; sleep 1; done
+xdotool keyup space keyup Control_L
+for i in {1..80}; do [ -s /tmp/tap-inserted.txt ] && break; sleep 1; done
 python3 - <<'PY'
 import re
 from pathlib import Path

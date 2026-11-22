@@ -9,6 +9,7 @@ const { chromium } = require('/tmp/tap-cdp/node_modules/playwright-core');
             const tap=window.tapwisper;
             if(!tap) return;
             for(const name of ['recording:start','recording:stop','recording:error','recording:cancel','result-panel:result','result-panel:error']) tap.on(name,v=>console.log('event',name,JSON.stringify(v)));
+            await tap.permissions.allGranted();
             console.log('engine',await tap.store.get('speechEngine'),await tap.store.get('localModels'));
             const devices=await navigator.mediaDevices?.enumerateDevices();
             console.log('audio inputs',devices?.filter(d=>d.kind==='audioinput').map(d=>d.label));
