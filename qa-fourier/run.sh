@@ -5,9 +5,10 @@ pulseaudio --start --exit-idle-time=-1
 pactl load-module module-null-sink sink_name=tapfixture rate=48000 channels=1
 pactl set-default-source tapfixture.monitor
 mkdir -p /tmp/tap-qa-profile
+ffmpeg -hide_banner -loglevel error -y -i /tmp/tap-fixture.wav -af "adelay=700,apad=pad_dur=9" -ar 44100 -ac 2 /tmp/tap-chromium-mic.wav
 openbox >/tmp/tap-wm.log 2>&1 &
 launch() {
-  node_modules/.bin/electron --no-sandbox --disable-gpu --remote-debugging-port=9222 --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --user-data-dir=/tmp/tap-qa-profile . > /tmp/tap-app.log 2>&1 &
+  node_modules/.bin/electron --no-sandbox --disable-gpu --remote-debugging-port=9222 --use-fake-device-for-media-stream --use-file-for-fake-audio-capture=/tmp/tap-chromium-mic.wav --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --user-data-dir=/tmp/tap-qa-profile . > /tmp/tap-app.log 2>&1 &
   app=$!
   for i in {1..90}; do curl -fsS http://127.0.0.1:9222/json/version >/dev/null 2>&1 && break; sleep 1; done
 }
