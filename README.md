@@ -167,7 +167,7 @@ Change it in Settings → Shortcuts. On macOS, set *System Settings → Keyboard
 
 - [Node.js](https://nodejs.org/) v18 or later
 - npm v9 or later
-- macOS 12+, Windows 10+, or Linux (X11; on Wayland, install `wtype` so text can be pasted)
+- macOS 12+, Windows 10+, or Linux (for text insertion, install `xdotool` on X11 or `wtype` on Wayland)
 - Optional, for local models in a development build: git, CMake 3.21+ and a C++17 compiler, then `npm run build:runtimes` (add `-- --vulkan` for the GPU backend on Windows/Linux; see [docs/LOCAL_MODELS.md](docs/LOCAL_MODELS.md#building-the-runtimes))
 
 ### 📦 Installation

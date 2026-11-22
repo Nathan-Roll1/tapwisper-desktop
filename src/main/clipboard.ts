@@ -92,6 +92,16 @@ export class ClipboardManager {
   private async simulateShortcut(key: ShortcutKey, forceFallback = false): Promise<void> {
     await waitForModifiersReleased()
 
+    if (!forceFallback && process.platform === 'linux' && !isWayland) {
+      // The shipped Linux uIOhook uses XSendEvent, which some X11 editors ignore.
+      try {
+        await execAsync(`xdotool key --clearmodifiers ctrl+${key}`)
+        return
+      } catch {
+        // Use the bundled injector if xdotool is unavailable.
+      }
+    }
+
     if (!forceFallback && !isWayland) {
       try {
         const modifier = process.platform === 'darwin' ? UiohookKey.Meta : UiohookKey.Ctrl
