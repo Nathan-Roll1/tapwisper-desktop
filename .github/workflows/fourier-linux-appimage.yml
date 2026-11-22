@@ -1,0 +1,45 @@
+name: TapWisper Fourier Linux AppImage contributor preview
+on:
+  push:
+    branches: [qa/fourier-linux-appimage]
+jobs:
+  package-and-dictate:
+    if: github.repository == 'Nathan-Roll1/tapwisper-desktop'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Package normal Electron AppImage with notices and CPU runtimes
+        run: bash qa-preview/build.sh
+      - name: Download in the model picker, capture speech and paste into an independent GTK editor
+        env:
+          TAP_PACKAGED_APP: /tmp/squashfs-root/AppRun
+        run: |
+          npm install --prefix /tmp/tap-cdp --no-audit --no-fund playwright-core@1.55.0
+          curl -fsSL https://raw.githubusercontent.com/ggml-org/whisper.cpp/b0a11594aec50892a02cd8d129eee2dfe93a8bb8/samples/jfk.wav -o /tmp/tap-fixture.wav
+          dbus-run-session -- xvfb-run -a -s "-screen 0 1280x900x24" bash qa-preview/run.sh
+          cd /tmp/tap-preview-out && sha256sum -c SHA256SUMS
+      - name: Save the tested preview and its digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: TapWisper-Fourier-preview-linux-x86_64
+          path: /tmp/tap-preview-out/
+          compression-level: 0
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-dictation-evidence
+          path: |
+            /tmp/tap-package-contents.txt
+            /tmp/tap-picker.png
+            /tmp/tap-events.log
+            /tmp/tap-inserted.txt
+            /tmp/tap-app.log
+            /tmp/whisper-build.log
+            /tmp/tap-preview-out/SHA256SUMS

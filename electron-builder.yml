@@ -11,6 +11,7 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   # Runtime sources and build trees (scripts/build-runtimes.mjs)
   - '!.cache${/*}'
+  - '!qa-preview${/*}'
   - '!resources/bin/*/build.json'
 asarUnpack:
   - resources/**
