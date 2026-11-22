@@ -16,6 +16,13 @@ jobs:
           node-version: 22
       - name: Package normal Electron AppImage with notices and CPU runtimes
         run: bash qa-preview/build.sh
+      - name: Preserve the newly built package for packaging diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-only-preview-candidate
+          path: /tmp/tap-preview-out/
+          retention-days: 1
+          compression-level: 0
       - name: Download in the model picker, capture speech and paste into an independent GTK editor
         env:
           TAP_PACKAGED_APP: /tmp/squashfs-root/AppRun

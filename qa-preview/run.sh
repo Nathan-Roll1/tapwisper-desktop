@@ -1,5 +1,8 @@
 set -euo pipefail
 test -x "$TAP_PACKAGED_APP"
+# FUSE-free extraction preserves the package and sandbox. These standard variables normally come from the AppImage runtime.
+export APPDIR="$(dirname "$TAP_PACKAGED_APP")"
+export APPIMAGE=/tmp/tap-preview-out/TapWisper-Fourier-preview-linux-x86_64.AppImage
 export PULSE_SOURCE=tapfixture.monitor
 pulseaudio --start --exit-idle-time=-1
 pactl load-module module-null-sink sink_name=tapfixture rate=48000 channels=1
@@ -10,7 +13,8 @@ openbox >/tmp/tap-wm.log 2>&1 &
 launch() {
   "$TAP_PACKAGED_APP" --disable-gpu --remote-debugging-port=9222 --use-fake-device-for-media-stream --use-file-for-fake-audio-capture=/tmp/tap-chromium-mic.wav --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --user-data-dir=/tmp/tap-qa-profile > /tmp/tap-app.log 2>&1 &
   app=$!
-  for i in {1..90}; do curl -fsS http://127.0.0.1:9222/json/version >/dev/null 2>&1 && break; sleep 1; done
+  for i in {1..90}; do curl -fsS http://127.0.0.1:9222/json/version >/dev/null 2>&1 && return; kill -0 "$app" 2>/dev/null || { cat /tmp/tap-app.log; return 1; }; sleep 1; done
+  return 1
 }
 trap 'tail -n 65 /tmp/tap-app.log /tmp/tap-events.log || true; find /tmp/tap-qa-profile/recordings -maxdepth 1 -printf "%f %s bytes\n" 2>/dev/null || true' EXIT
 launch
