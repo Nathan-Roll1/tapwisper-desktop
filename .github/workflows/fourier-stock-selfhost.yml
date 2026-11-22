@@ -1,0 +1,45 @@
+name: Transcribe with released TapWisper over a local Fourier endpoint
+on:
+  push:
+    branches: [qa/fourier-stock-selfhost]
+permissions:
+  contents: read
+jobs:
+  release:
+    if: github.repository == 'Nathan-Roll1/tapwisper-desktop'
+    runs-on: macos-15
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify the unmodified upstream macOS application
+        run: |
+          set -eu
+          curl -fsSL --retry 3 https://github.com/zeyadelosherey/tapwisper-desktop/releases/download/v1.2.0/tapwisper-desktop-1.2.0-arm64-mac.zip -o /tmp/release.zip
+          echo '5f3e1afd9cd98e2f3402c357096554f6ce675cd612294c471c6c7f5be88e5590  /tmp/release.zip' | shasum -a 256 -c
+          mkdir -p /tmp/tap-release
+          ditto -xk /tmp/release.zip /tmp/tap-release
+          app=$(find /tmp/tap-release -name '*.app' -maxdepth 1 | head -1)
+          name=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")
+          npm install --no-audit --no-fund --prefix /tmp/tap-tools playwright-core@1.55.0
+          export NODE_PATH=/tmp/tap-tools/node_modules
+          "$app/Contents/MacOS/$name" --user-data-dir=/tmp/tap-stock-profile --remote-debugging-port=9222 >/tmp/tap-stock.log 2>&1 &
+          for n in {1..60}; do curl --silent --fail http://127.0.0.1:9222/json/version >/dev/null && break; sleep 1; done
+          node qa-selfhost/check.cjs --preflight
+      - name: Run the stock client's connection test and audio upload
+        run: |
+          set -eu
+          mkdir -p /tmp/fourier-runtime /tmp/fourier-pack
+          curl -fsSL --retry 3 https://github.com/ggml-org/llama.cpp/releases/download/b11928/llama-b11928-bin-macos-arm64.tar.gz -o /tmp/llama.tgz
+          echo 'eaccccd39f670049506377834a341c59c88c3b48ac3a9e6a5b6166152a9e32dd  /tmp/llama.tgz' | shasum -a 256 -c
+          tar -xf /tmp/llama.tgz -C /tmp/fourier-runtime
+          base=https://huggingface.co/oruk/oruk-fourier-2b/resolve/ffab7f8aff148251befd2bf75fd6a68aeb8601d8/gguf/llama-cpp
+          for file in Qwen3-ASR-Oruk-Fourier-2B-Q8_0.gguf mmproj-Qwen3-ASR-Oruk-Fourier-2B-Q8_0.gguf; do curl -fsSL --retry 3 "$base/$file" -o "/tmp/fourier-pack/$file"; done
+          curl -fsSL https://raw.githubusercontent.com/ggml-org/whisper.cpp/b0a11594aec50892a02cd8d129eee2dfe93a8bb8/samples/jfk.wav -o /tmp/jfk.wav
+          bin=$(find /tmp/fourier-runtime -name llama-server -type f | head -1)
+          export DYLD_LIBRARY_PATH="$(dirname "$bin")" NODE_PATH=/tmp/tap-tools/node_modules
+          "$bin" -m /tmp/fourier-pack/Qwen3-ASR-Oruk-Fourier-2B-Q8_0.gguf --mmproj /tmp/fourier-pack/mmproj-Qwen3-ASR-Oruk-Fourier-2B-Q8_0.gguf --alias oruk-fourier-2b --host 127.0.0.1 --port 8098 -c 4096 -np 1 -ngl 0 --no-mmproj-offload -t 3 --jinja >/tmp/fourier-server.log 2>&1 &
+          for n in {1..90}; do curl -fsS http://127.0.0.1:8098/health >/dev/null 2>&1 && break; sleep 1; done
+          node qa-selfhost/check.cjs || { tail -30 /tmp/fourier-server.log; exit 1; }
