@@ -136,6 +136,7 @@ export function PinnedPanel(): JSX.Element {
       setState('transcribing')
       const blob = await stopRecording()
       const stats = getLastRecordingStats()
+      console.info("QA capture", blob?.size, JSON.stringify(stats))
       const hideAll = (): void => {
         setState('idle')
         window.tapwisper.recordingPill.hide()
@@ -174,7 +175,9 @@ export function PinnedPanel(): JSX.Element {
       let result: Awaited<ReturnType<typeof transcribeAudio>>
       try {
         result = await transcribeAudio(blob)
+        console.info("QA recognition", JSON.stringify(result))
       } catch (err) {
+        console.info("QA recognition error", String(err))
         // Keep the audio so the dictation can be retried from History
         // (a failed entry has an empty transcription)
         const appInfo = await appPromise
@@ -189,6 +192,7 @@ export function PinnedPanel(): JSX.Element {
       }
       const [config, appInfo] = await Promise.all([configPromise, appPromise])
 
+      console.info("QA context ready")
       let rawTranscription = result.text?.trim() || ''
       if (rawTranscription && isLikelyHallucination(rawTranscription, stats.voicedMs)) {
         rawTranscription = ''
@@ -341,6 +345,7 @@ export function PinnedPanel(): JSX.Element {
         void saveAudio(id, blob)
 
         await new Promise((r) => setTimeout(r, 50))
+        console.info("QA paste", finalText)
         await window.tapwisper.clipboard.insertText(finalText)
 
         // Remembered for "AI Actions on Last Dictation" in the tray menu
